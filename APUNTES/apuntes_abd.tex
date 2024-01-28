@@ -1,0 +1,224 @@
+\documentclass{article}
+
+\usepackage{amsmath, amsthm, amssymb, amsfonts}
+\usepackage{thmtools}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{framed}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tcolorbox}
+
+\colorlet{LightGray}{White!90!Periwinkle}
+\colorlet{LightOrange}{Orange!15}
+\colorlet{LightGreen}{Green!15}
+
+\newcommand{\HRule}[1]{\rule{\linewidth}{#1}}
+
+\declaretheoremstyle[name=Definicion,]{thmsty}
+\declaretheorem[style=thmsty,numberwithin=section]{theorem}
+\tcolorboxenvironment{theorem}{colback=LightGray}
+
+\declaretheoremstyle[name=Proposition,]{prosty}
+\declaretheorem[style=prosty,numberlike=theorem]{proposition}
+\tcolorboxenvironment{proposition}{colback=LightOrange}
+
+\declaretheoremstyle[name=Principle,]{prcpsty}
+\declaretheorem[style=prcpsty,numberlike=theorem]{principle}
+\tcolorboxenvironment{principle}{colback=LightGreen}
+
+\setstretch{1.2}
+\geometry{
+    textheight=9in,
+    textwidth=5.5in,
+    top=1in,
+    headheight=12pt,
+    headsep=25pt,
+    footskip=30pt
+}
+
+% ------------------------------------------------------------------------------
+
+\begin{document}
+
+% ------------------------------------------------------------------------------
+% Cover Page and ToC
+% ------------------------------------------------------------------------------
+
+\title{ \normalsize \textsc{}
+		\\ [2.0cm]
+		\HRule{1.5pt} \\
+		\LARGE \textbf{\uppercase{Apuntes ABD}
+		\HRule{2.0pt} \\ [0.6cm] \LARGE{} \vspace*{10\baselineskip}}
+		}
+\date{}
+\author{\textbf{Author} \\ 
+		B.L.B}
+
+\maketitle
+\newpage
+
+\tableofcontents
+\newpage
+
+% ------------------------------------------------------------------------------
+
+\section{Control de Acceso}
+
+\begin{theorem}
+    \textbf{Administrador:} persona responsable de garantizar la seguridad e integridad de los datos. 
+\end{theorem}
+
+\begin{itemize}
+	\item Seguridad: previene la revelación, alteración y destrucción de los datos. Los usuarios solo pueden realizar operaciones autorizadas.
+	\item Integridad: asegura la exactitud y la validez de los datos (consistentes)
+\end{itemize}
+
+Es el responsable principal de la \textbf{seguridad} del SGBD. 
+Tiene una cuenta de súper-usuario (forma de acceso protegida) y especifica qué usuarios tienen acceso a qué datos y qué operaciones pueden realizar sobre esos datos.
+
+El acceso se controla mediante privilegios (permisos para realizar operaciones).  
+
+%\begin{proposition}
+%    This is a proposition.
+%\end{proposition}
+
+%\begin{principle}
+ %   This is a principle.
+%\end{principle}
+
+% Maybe I need to add one more part: Examples.
+% Set style and colour later.
+
+\subsection{Gestión de privilegios}
+
+En esta sección se explorará la forma de crear usuarios y concederles privilegios.
+\subsubsection{Crear cuenta de usuario}
+ \begin{verbatim}
+ 	CREATE USER <usuario> IDENTIFIED BY 'contraseña';
+ \end{verbatim}
+\url{https://dev.mysql.com/doc/refman/8.0/en/create-user.html}
+\subsubsection{Borrar cuenta de usuario}
+\begin{verbatim}
+	DROP USER <usuario>;
+\end{verbatim}
+\subsubsection{Conceder privilegios}
+\begin{verbatim}
+	GRANT <privilegio> ON <objeto> TO <sujeto> [WITH GRANT OPTION]
+\end{verbatim}
+La cláusula "With Grang Option" permite al usuario receptor de un permiso propagarlo a otros usuarios.
+\subsubsection{Retirar privilegios}
+\begin{verbatim}
+	REVOKE [GRANT OPTION FOR] <privilegio> ON <objeto> FROM <sujeto>
+\end{verbatim}
+ 
+\subsubsection{Tipos de objeto}
+\begin{verbatim}
+	 *.* (Global)
+	 <BD>.* 
+	 <BD>.<tabla>
+	 <BD>.<tabla>(columna)
+
+\end{verbatim}
+Mostrar permisos otorgados para nuestro usuario:
+\begin{verbatim}
+	SHOW GRANTS;
+\end{verbatim}
+Mostrar permisos para otro usuario:
+\begin{verbatim}
+	SHOW GRANTS FOR <usuario>;
+\end{verbatim}
+
+\subsubsection{Ejercicio 1}
+Crear BD llamada ``ej1DB"
+\begin{verbatim}
+	CREATE DATABASE ej1DB;
+\end{verbatim}
+Crear usuario llamado ``ej1user" y darle permisos para crear tablas en ej1DB y leer, insertar y borrar filas en las tablas de ej1DB
+\begin{verbatim}
+	CREATE USER ej1user IDENTIFIED BY '1234';
+	GRANT CREATE, SELECT, INSERT, DELETE ON ej1DB.* TO ej1user;
+\end{verbatim}
+Verificar los permisos asignados
+\begin{verbatim}
+	SHOW GRANTS;
+\end{verbatim}
+
+\subsection{Roles}
+
+Un rol es una colección de privilegios con un nombre.
+\subsubsection{Crear rol}
+\begin{verbatim}
+	CREATE ROLE <rol>;
+\end{verbatim}
+\subsubsection{Asignar privilegios a rol}
+\begin{verbatim}
+	GRANT <privilegio> ON <objeto> TO <rol>;
+\end{verbatim}
+\subsubsection{Asignar rol a usuario}
+\begin{verbatim}
+	GRANT <rol> TO <usuario>;
+\end{verbatim}
+\subsubsection{Activar y mostrar rol}
+\begin{verbatim}
+	SET ROLE <rol>;
+	SELECT current_role();
+\end{verbatim}
+\subsubsection{Definir rol por defecto}
+\begin{verbatim}
+	SET DEFAULT ROLE <rol> TO <usuario>;
+\end{verbatim}
+
+\subsubsection{Mostrar privilegios de rol}
+\begin{verbatim}
+	SHOW GRANTS FOR <usuario> USING <rol>;
+\end{verbatim}
+\subsubsection{Retirar privilegios}
+\begin{verbatim}
+	REVOKE <privilegio> ON <objeto> FROM <rol>;
+\end{verbatim}
+\subsubsection{Eliminar rol}
+\begin{verbatim}
+	DROP <rol>;
+\end{verbatim}
+\subsubsection{Ejercicio 2}
+Crear una BD "ej2DB" y usuario "ej2user"
+\begin{verbatim}
+	CREATE DATABASE ej2DB;
+	CREATE USER ej2user IDENTIFIED BY '1234';
+\end{verbatim}
+Crear un rol "ej2rol" con permisos para crear tablas e insertar y leer filas de las tablas.
+\begin{verbatim}
+	CREATE ROLE ej2rol;
+	GRANT CREATE, INSERT, SELECT ON ej2DB.* TO ej2rol;
+\end{verbatim}
+Asignar el rol al usuario
+\begin{verbatim}
+	GRANT ej2rol TO ej2user;
+\end{verbatim}
+%\begin{figure}[htbp]
+ %   \center
+  %  \includegraphics[scale=0.06]{img/photo.jpg}
+  %  \caption{Sydney, NSW}
+%\end{figure}
+
+%\subsection{Citation}
+
+%This is a citation\cite{Eg}.
+
+\newpage
+
+% ------------------------------------------------------------------------------
+% Reference and Cited Works
+% ------------------------------------------------------------------------------
+
+\bibliographystyle{IEEEtran}
+\bibliography{References.bib}
+
+% ------------------------------------------------------------------------------
+
+\end{document}
