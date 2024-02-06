@@ -209,6 +209,86 @@ Asignar el rol al usuario
 %\subsection{Citation}
 
 %This is a citation\cite{Eg}.
+\subsection{Recuperación (06-02-2024)}
+
+La SGBD debe asegurar la integridad y la seguridad de los datos (LOPD) ante los riesgos de que estos datos se pierdan. 
+Dos situaciones:
+\begin{itemize}
+	\item A nivel tabla/BD
+	\item \textbf{A nivel de transacción}
+\end{itemize}
+
+Se hacen \textbf{transacciones} para agrupar varias operaciones, si algo va mal en alguna de las operaciones la transacción se interrumpe y no hay cambios en la BD. 
+Una transacción se considera una unidad lógica de procesamiento, de integridad y de recuperación. 
+\begin{verbatim}
+	START TRANSACTION;
+	\\OPERACIONES
+	COMMIT;(éxito)	O 	ROLLBACK;(fracaso)
+\end{verbatim}
+Por defecto mySQL funciona en AutoCommit: crea una transacción por cada operación. Se puede desactivar para gestionar las transacciones de forma manual.
+\begin{verbatim}
+	SET AUTOCOMMIT=0;
+\end{verbatim}
+Para garantizar las validez de datos frente a fallos, los SGBD cumplen las propiedades ACID:
+\begin{itemize}
+	\item Atomicity: unidad lógica de procesamiento, no puede ejecutarse a medias.
+	\item Consistency: unidad lógica de integridad
+	\item Isolation: ejecución de una transacción no afecta a otra ejecución.
+	\item Durability: los cambios de una transacción confirmados deben persistir.
+\end{itemize}
+Durante la ejecución de una base de datos, los cambios y cálculos ocurren en la memoria RAM. Una vez deban reflejarse, se envían al disco duro y se organizan en distintos ficheros. Para que la SGBD sea lo más eficiente posible, se trata de acceder lo menos posible al disco duro. 
+Existen 3 tipos de fallos posibles:
+\begin{itemize}
+	\item Fallos físicos
+	\item Fallos de software
+	\item Fallos al ejecutar la transacción
+\end{itemize}
+La SGBD debe asegurar que se cumplan las propiedades ACID a pesar de los fallos. 
+Las SGBD disponen de un diario en el que se escriben las operaciones realizadas por las transacciones. Se escribe mediante "write ahead logging". Todo comando que pasa por la RAM, se escribe en un diario (fichero) del disco antes de realizar los cambios en la BD. Este diario es la base del proceso de recuperación y sirve para monitorizar la ejecución de las transacciones. 
+\begin{verbatim}
+	START_TRANSACTION, <T>, <time>
+	READ, <T>, <X>, <V>, <time>
+	WRITE, <T>, <X>, <oldV>, <newV>, <time>
+	COMMIT, <T>, <time>
+	ROLLBACK, <T>, <time>
+\end{verbatim}
+En caso de fallo en medio de una transacción, el sistema de recuperación revisa el diario y aplica las operaciones REDO(T) o UNDO(T). 
+En mySQL el diario se llama \textbf{Redo Log}. Por defecto se encuentra activado. Se puede repartir entre varios ficheros y se puede ver cuales se hallan activos. (Escrito en binario).
+\subsubsection{Ejercicio 2}
+\begin{verbatim}
+	
+\end{verbatim}
+\subsubsection{Proceso de recuperación}
+Tras el commit o el failed hay un paso más: terminated. Llega ahí tras pasar un punto de confirmación.
+En este tema se considerará un único diario. 
+Cuando una transacción T realiza COMMIT: todas las operaciones de la transacción se ejecutaron con éxito, el efecto se ha anotado en el diario y T ha llegado a un punto de confirmación.
+Cuando una transacción T realiza ROLLBACK: las operaciones se han anotado en el diario, pero sus operaciones no deben escribirse en la BD. 
+Si sucede un fallo durante una transacción, T no alcanza un punto de confirmación. El diario contiene alguna de sus operaciones, pero no está el COMMIT. El proceso de recuperación aplica UNDO(T): deshace las operaciones en orden inverso.
+Si sucede un fallo cuando una transacción ya ha sido confirmada, se debe rehacer. En este caso debe aplicarse REDO(T): rehace las operaciones en el orden original.
+Frecuencia de la actualización del diario:
+\begin{itemize}
+	\item Inmediata: por cada operación, la RAM envía dicha operación al diario. Mayor fiabilidad, menor rendimiento.
+	\item Diferida: las operaciones se envían al diario por bloques. Mayor rendimiento, mejor jerarquía de memoria, mayor riesgo. 
+\end{itemize}
+Cada cierto tiempo, el SGBD realiza el \textbf{Checkpoint}: 
+Escritura diferida de diario, el bloque de RAM se envía al diario aunque no haya alcanzado su tamaño total. Revisa el diario, y aquellas con COMMIT las escribe en la BD. Crea una lista con las transacciones activas. 
+\begin{verbatim}
+	CHECKPOINT, <time>
+\end{verbatim}
+Estos puntos permiten recorrer el diario para ignorar las confirmadas anteriores al checkpoint. En escritura diferida, hay 3 operaciones que fuerzan las escritura de los bloques: CHECKPOINT, ROLLBACK, COMMIT.
+\subsubsection{Actualización de BD}
+Actualización diferida: después del commit. \textbf{Algoritmo no-deshacer/rehacer}
+Pueden suceder 2 tipos de fallo:
+\begin{itemize}
+	\item Antes de realizar el commit: no hay que deshacer nada.
+	\item Después de ralizar el commit: rehacer las operaciones.
+\end{itemize}
+Actualización inmediata:  \textbf{Algoritmo deshacer/rehacer}
+\begin{itemize}
+	\item Antes de realizar commit: deshacer
+	\item Después de realizar commit: rehacer
+\end{itemize}
+
 
 \newpage
 
