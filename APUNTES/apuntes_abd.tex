@@ -209,7 +209,7 @@ Asignar el rol al usuario
 %\subsection{Citation}
 
 %This is a citation\cite{Eg}.
-\subsection{Recuperación (06-02-2024)}
+\section{Recuperación (06-02-2024)}
 
 La SGBD debe asegurar la integridad y la seguridad de los datos (LOPD) ante los riesgos de que estos datos se pierdan. 
 Dos situaciones:
@@ -219,7 +219,10 @@ Dos situaciones:
 \end{itemize}
 
 Se hacen \textbf{transacciones} para agrupar varias operaciones, si algo va mal en alguna de las operaciones la transacción se interrumpe y no hay cambios en la BD. 
-Una transacción se considera una unidad lógica de procesamiento, de integridad y de recuperación. 
+\begin{theorem}
+    \textbf{Transacción:} Unidad lógica de procesamiento, de integridad y de recuperación. 
+\end{theorem}
+
 \begin{verbatim}
 	START TRANSACTION;
 	\\OPERACIONES
@@ -254,39 +257,104 @@ Las SGBD disponen de un diario en el que se escriben las operaciones realizadas 
 \end{verbatim}
 En caso de fallo en medio de una transacción, el sistema de recuperación revisa el diario y aplica las operaciones REDO(T) o UNDO(T). 
 En mySQL el diario se llama \textbf{Redo Log}. Por defecto se encuentra activado. Se puede repartir entre varios ficheros y se puede ver cuales se hallan activos. (Escrito en binario).
-\subsubsection{Ejercicio 2}
-\begin{verbatim}
-	
-\end{verbatim}
-\subsubsection{Proceso de recuperación}
+
+\subsection{Proceso de recuperación}
 Tras el commit o el failed hay un paso más: terminated. Llega ahí tras pasar un punto de confirmación.
 En este tema se considerará un único diario. 
 Cuando una transacción T realiza COMMIT: todas las operaciones de la transacción se ejecutaron con éxito, el efecto se ha anotado en el diario y T ha llegado a un punto de confirmación.
 Cuando una transacción T realiza ROLLBACK: las operaciones se han anotado en el diario, pero sus operaciones no deben escribirse en la BD. 
 Si sucede un fallo durante una transacción, T no alcanza un punto de confirmación. El diario contiene alguna de sus operaciones, pero no está el COMMIT. El proceso de recuperación aplica UNDO(T): deshace las operaciones en orden inverso.
-Si sucede un fallo cuando una transacción ya ha sido confirmada, se debe rehacer. En este caso debe aplicarse REDO(T): rehace las operaciones en el orden original.
+Si sucede un fallo cuando una transacción ya ha sido confirmada, se debe rehacer. En este caso debe aplicarse REDO(T): rehace las operaciones en el orden original.\\
 Frecuencia de la actualización del diario:
 \begin{itemize}
-	\item Inmediata: por cada operación, la RAM envía dicha operación al diario. Mayor fiabilidad, menor rendimiento.
-	\item Diferida: las operaciones se envían al diario por bloques. Mayor rendimiento, mejor jerarquía de memoria, mayor riesgo. 
+	\item Inmediata: por cada operación, la RAM envía dicha operación al diario. Mayor fiabilidad, menor rendimiento (más escrituras en disco).
+	\item Diferida: las operaciones se envían al diario por bloques. Mayor rendimiento (menos escrituras), mejor jerarquía de memoria, mayor riesgo. 
 \end{itemize}
-Cada cierto tiempo, el SGBD realiza el \textbf{Checkpoint}: 
-Escritura diferida de diario, el bloque de RAM se envía al diario aunque no haya alcanzado su tamaño total. Revisa el diario, y aquellas con COMMIT las escribe en la BD. Crea una lista con las transacciones activas. 
+Cada cierto tiempo, el SGBD realiza el \textbf{Checkpoint}: \\
+En \textit{escritura diferida} de diario, el bloque de RAM se envía al diario aunque no haya alcanzado su tamaño total. Revisa el diario, y aquellas con COMMIT (finalizadas) las escribe en la BD. Crea una lista con las transacciones activas. 
 \begin{verbatim}
 	CHECKPOINT, <time>
 \end{verbatim}
-Estos puntos permiten recorrer el diario para ignorar las confirmadas anteriores al checkpoint. En escritura diferida, hay 3 operaciones que fuerzan las escritura de los bloques: CHECKPOINT, ROLLBACK, COMMIT.
-\subsubsection{Actualización de BD}
-Actualización diferida: después del commit. \textbf{Algoritmo no-deshacer/rehacer}
+Estos puntos permiten recorrer el diario para ignorar las confirmadas anteriores al checkpoint. En \textit{escritura diferida}, hay 3 operaciones que fuerzan las escritura de los bloques: CHECKPOINT, ROLLBACK, COMMIT.
+\subsection{Actualización de BD}
+Hay dos maneras de gestionarlo: Inmmediata y diferida.\\
+Actualización \text{diferida}: después del commit. \textbf{Algoritmo no-deshacer/rehacer}\\
 Pueden suceder 2 tipos de fallo:
 \begin{itemize}
-	\item Antes de realizar el commit: no hay que deshacer nada.
-	\item Después de ralizar el commit: rehacer las operaciones.
+	\item Antes de realizar el COMMIT: no hay que deshacer nada. No ocurre nada.
+	\item Después de ralizar el COMMIT: es necesario rehacer las operaciones.
 \end{itemize}
-Actualización inmediata:  \textbf{Algoritmo deshacer/rehacer}
+Actualización \textbf{inmediata}:  \textbf{Algoritmo deshacer/rehacer}
 \begin{itemize}
-	\item Antes de realizar commit: deshacer
-	\item Después de realizar commit: rehacer
+	\item Antes de realizar commit: es necesario deshacer las operaciones
+	\item Después de realizar commit: es necesario rehacer las operaciones
+\end{itemize}
+\begin{verbatim}
+ALGORITMO:
+1) Crear listas vacías ACTIVAS y CONFIRMADAS
+2) Llenar listas con transacciones activas previas al checkpoint. 
+3) Añadir transacciones que comienzan después del checkpoint.
+     3.1) Buscar posibles confirmaciones de las transacciones
+         -COMMIT: Mover a confirmados
+         -ROLLBACK: Borrar de activas
+         ¿BD DIFERIDA?
+           No: deshacer operaciones de transacciones activas
+           Sí: rehacer WRITEs de transacciones confirmadas y reiniciar transacciones
+           activas.
+\end{verbatim}
+
+\subsubsection{Ejercicio 3: (08/02/2024)}
+\begin{verbatim}
+***** DATOS *****
+DIARIO Nº 2
+Instante de fallo: 405
+Diario: inmediato
+Actualización de diario: Diferida
+Bloque: 3
+***** RESOLUCIÓN *****
+Mirar último comando que ha llegado al diario:
+[COMMIT, T1, 390]
+1) ACT ={} CONF={}
+2)Mirar transacciones previas al último checkpoint:
+ACT={T6,T3,T4,T2,T7,T8,T1,T5}
+Eliminar las confirmadas:
+ACT={T6,T2,T8,T1,T5}
+3) Mismas activas.
+3.1) Buscar confirmaciones: 
+ACT={T2,T8}
+CONF={T5,T6,T1}
+4) Operaciones: actualización inmediata. BD diferida? no:
+   DESHACER (orden inverso): {T2, T8}
+    WRITE: F:84; X:77; W:30; D:171
+   REHACER (mismo orden): {T5, T6, T1}
+    WRITE: Q:67; A:6; R:14; B:190; S:99; C:105; N:112; O:187; P:195
+   REINICIAR ACTIVAS:
+    T2, T8
+\end{verbatim}
+
+\subsection{Estructura de InnoDB}
+Motor de almacenamiento de MySQL 8.0: InnoDB. Soporta propiedades ACID y control de concurrencia multi-usuario.\\
+Mecanismos importantes:
+\begin{itemize}
+	\item Flujo de operación de lectura: cliente -> RAM y CPU. Consulta una tabla llamada \textbf{Buffer Pool}, que guarda las consultas más habituales en la RAM, de modo que no tiene que acceder al disco todas las veces que se haga esa petición. Si no se encuetra allí, se accede al disco, \textbf{General Tablespaces}.
+	\item Flujo de operación de escritura: cliente -> RAM. Se registran los cambios en \textbf{Log Buffer}, y estos pasan al disco al \textbf{Redo Log} y estos pasarán a \textbf{General Tablespaces}.
+\end{itemize}
+
+Estructuras en memoria:
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{innodb.png}
+\end{figure} 
+\begin{itemize}
+	\item \emph{Buffer Pool}: caché de datos. Organizado con LRU. 128 MB. Se puede calcular su eficiencia con las variables de estado buffer.pool.reads y buffer.pool.read.requests. Para evitar problemas de rendimiento, al reiniciar MySQL se guarda un porcentaje del Buffer Pool en el disco, que cuando MySQL se inicia pasan a la RAM. 
+	\item \emph{Log Buffer}: diario de la RAM que aún no se ha pasado a disco. Contiene los datos que deben escribirse en el Redo Log. 16 MB. La gestión de copia de datos se hace mediante frecuencia.  
+\end{itemize}
+Los ajustes de estos parámetros pueden tener comportamientos no esperados en la DB. A mayor \% de Buffer Pool a disco, mayor rendimento de consultas desde el comienzo, pero más tiempo de carga de MySQL. \\
+En MySQL 8.0 hay una variables de sistema: innodb.dedicated.server. Sólo se debe activar en entornos donde mysql sea la única aplicación, puesto que gestiona la RAM automáticamente y puede afectar a otros procesos. Afecta a: buffer.pool.size, redo.log.capacity y a flush.method. 
+\subsection{Examen:}
+\begin{itemize}
+	\item Ejercicios de cada tema (teoría)
+	\item Ejercicios prácticos
 \end{itemize}
 
 
