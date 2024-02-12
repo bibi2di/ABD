@@ -333,11 +333,20 @@ CONF={T5,T6,T1}
 \end{verbatim}
 
 \subsection{Estructura de InnoDB}
+Conceptos importantes (examen):
+\begin{itemize}
+	\item Adaptive Hash Index: libreta de direcciones para el buffer pool.
+	\item Buffer Pool: información en caché.
+	\item Change Buffer: INSERTE, DELETE, UPDATE.
+	\item Log Buffer: registro operaciones que se escribirán en el diario en la RAM.
+	\item Redo Log: recibe el Log Buffer, diario de recuperación (más de un fichero).
+	\item General Tablespaces: ficheros donde se guarda la informaciónd de las tablas persistentes de la DB.
+\end{itemize}
 Motor de almacenamiento de MySQL 8.0: InnoDB. Soporta propiedades ACID y control de concurrencia multi-usuario.\\
 Mecanismos importantes:
 \begin{itemize}
-	\item Flujo de operación de lectura: cliente -> RAM y CPU. Consulta una tabla llamada \textbf{Buffer Pool}, que guarda las consultas más habituales en la RAM, de modo que no tiene que acceder al disco todas las veces que se haga esa petición. Si no se encuetra allí, se accede al disco, \textbf{General Tablespaces}.
-	\item Flujo de operación de escritura: cliente -> RAM. Se registran los cambios en \textbf{Log Buffer}, y estos pasan al disco al \textbf{Redo Log} y estos pasarán a \textbf{General Tablespaces}.
+	\item Flujo de operación de lectura: cliente - RAM y CPU. Consulta una tabla llamada \textbf{Buffer Pool}, que guarda las consultas más habituales en la RAM, de modo que no tiene que acceder al disco todas las veces que se haga esa petición. Consulta el \textbf{Change Buffer} por si ha habido algún cambio. Si no se encuetra allí, se accede al disco, \textbf{General Tablespaces}.
+	\item Flujo de operación de escritura: cliente - RAM. Se registran los cambios en \textbf{Log Buffer}, y estos pasan al disco al \textbf{Redo Log} y estos pasarán a \textbf{General Tablespaces}.
 \end{itemize}
 
 Estructuras en memoria:
@@ -356,6 +365,111 @@ En MySQL 8.0 hay una variables de sistema: innodb.dedicated.server. Sólo se deb
 	\item Ejercicios de cada tema (teoría)
 	\item Ejercicios prácticos
 \end{itemize}
+
+\subsection{Ejercicio 1 (12-02-2024)}
+a)
+\begin{verbatim}
+************Datos************
+Fallo: 75
+DB diferida
+Diario inmediato
+*****************
+0.1) último checkpoint: 0
+1) iniciar listas: 
+Act={}
+Conf={}
+2) introducir las transacciones activas por delante del checkpoint y
+si termina antes, quitarla.
+3) todas las transacciones iniciadas después del CP y hasta el error: 
+ACT={T1, T2, T3}
+Si terminan, al conf.
+CONF={}
+4) BD diferida? sí, no hay que deshacer.
+Rehacer CONF : nada
+Reiniciar: T1, T2, T3
+\end{verbatim}
+b)
+\begin{verbatim}
+************Datos************
+Fallo: 75
+DB inmediata
+Diario inmediata
+*****************
+0.1) último checkpoint: 0
+1) iniciar listas: 
+Act={}
+Conf={}
+2) introducir las transacciones activas por delante del checkpoint y
+si termina antes, quitarla.
+3) todas las transacciones iniciadas después del CP y hasta el error: 
+ACT={T1, T2, T3}
+Si terminan, al conf.
+CONF={}
+4) BD diferida? no, hay que deshacer.
+Deshacer:
+ WRITE A3: 40
+       B1: 45
+       A2: 35
+       A1: 30
+Rehacer CONF : nada
+Reiniciar: T1, T2, T3
+\end{verbatim}
+c)
+\begin{verbatim}
+************Datos************
+Fallo: 285
+DB inmediata
+Diario inmediato
+*****************
+0.1) último checkpoint: 230
+1) iniciar listas: 
+Act={}
+Conf={}
+2) introducir las transacciones activas por delante del checkpoint y 
+si termina antes, quitarla.
+ACT={T1, T2, T3, T4} -> ACT={T3, T4}
+3) todas las transacciones iniciadas después del CP y hasta el error: 
+ACT={T4}
+Si terminan, al conf.
+CONF={T3}
+4) BD diferida? no, hay que deshacer.
+Deshacer:
+ WRITE D4: 90
+       C4: 120
+       B4: 30
+       A4: 45
+Rehacer CONF : 
+ WRITE A3: 45
+       B3: 25
+       C3: 125
+       D3: 95
+Reiniciar: T4
+\end{verbatim}
+d)
+\begin{verbatim}
+************Datos************
+Fallo: 205
+DB diferida
+Diario diferido, bloque=9
+*****************
+0.1) última orden en diario: COMMIT, T3, 150
+1) iniciar listas: 
+Act={}
+Conf={}
+2) introducir las transacciones activas por delante del checkpoint y 
+si termina antes, quitarla.
+ACT={T6, T3, T4, T2, T7, T8}
+3) todas las transacciones iniciadas después del CP y hasta el error: 
+ACT={T6, T4, T2, T7, T8}
+Si terminan, al conf.
+CONF={T3}
+4) BD diferida? SÍ, no hay que deshacer.
+Rehacer CONF : 
+ WRITE H: 36
+       I: 96
+       J: 19
+Reiniciar: T6, T4, T2, T7, T8
+\end{verbatim}
 
 
 \newpage
