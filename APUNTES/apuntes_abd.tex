@@ -12,6 +12,10 @@
 \usepackage{framed}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{tcolorbox}
+\usepackage{soul}
+\usepackage{amsmath}
+\usepackage{mathtools}
+
 
 \colorlet{LightGray}{White!90!Periwinkle}
 \colorlet{LightOrange}{Orange!15}
@@ -93,6 +97,16 @@ El acceso se controla mediante privilegios (permisos para realizar operaciones).
 
 % Maybe I need to add one more part: Examples.
 % Set style and colour later.
+
+%\begin{figure}[htbp]
+ %   \center
+  %  \includegraphics[scale=0.06]{img/photo.jpg}
+  %  \caption{Sydney, NSW}
+%\end{figure}
+
+%\subsection{Citation}
+
+%This is a citation\cite{Eg}.
 
 \subsection{Gestión de privilegios}
 
@@ -200,15 +214,144 @@ Asignar el rol al usuario
 \begin{verbatim}
 	GRANT ej2rol TO ej2user;
 \end{verbatim}
-%\begin{figure}[htbp]
- %   \center
-  %  \includegraphics[scale=0.06]{img/photo.jpg}
-  %  \caption{Sydney, NSW}
-%\end{figure}
 
-%\subsection{Citation}
+\subsection{Vistas}
+\begin{theorem}
+Consultas almacenadas que producen un resultado al ser invocados y limitan la visibilidad de los datos.
+\end{theorem}
+Crear:
+\begin{verbatim}
+CREATE VIEW <BD>.<nombre> AS <select>;
+\end{verbatim}
+Borrar:
+\begin{verbatim}
+DROP VIEW <nombre>;
+\end{verbatim}
+No permiten borrar, actualizar o insertar, únicamente \textbf{SELECT}.
 
-%This is a citation\cite{Eg}.
+\subsection{Rutinas almacenadas}
+\begin{theorem}
+Porciones de código SQL reutilizables con nombre.
+\end{theorem}
+Existen de dos tipos: 
+\begin{enumerate}
+	\item Procedimientos: CALL, no devuelve valor.
+	\item Funciones: se invoca usando su nombre, devuelve valor.
+\end{enumerate}
+No se recomienda implementar para lógica de negocio, dificulta el mantenimiento y depuración.
+\subsubsection{Procedimiento}
+\begin{verbatim}
+DELIMITER //
+CREATE PROCEDURE <nombre> (<parámetros>)
+BEGIN
+  <sentencias>
+ENDE
+DELIMITER ;
+\end{verbatim}
+Parámetros: IN, OUT, INOUT.
+Se pueden asignar valores a variables:
+\begin{verbatim}
+DECLARE variable <tipo>;
+SELECT columna INTO variable FROM .. WHERE ..
+SET variable = 2;
+\end{verbatim}
+Todo procedimiento pertenece a una DB. Si la DB se borra, el procedimiento también. 
+Mostrar procedimientos:
+\begin{verbatim}
+SHOW PROCEDURE STATUS WHERE DB = '<nombre-BD>';
+\end{verbatim}
+Llamar a procedimiento:
+\begin{verbatim}
+CALL proc();
+\end{verbatim}
+Son necesarios los permisos \textbf{CREATE ROUTINE} y \textbf{EXECUTE} para crear y ejecutar los procedimientos. 
+\subsubsection{Ejercicio 3:}
+\begin{verbatim}
+CREATE DATABASE BDvalores;
+USE BDvalores;
+CREATE TABLE valores(id INT NOT NULL PRIMARY KEY,
+valor INT);
+DELIMITER//
+CREATE PROCEDURE suma()
+BEGIN
+DECLARE resultado INT;
+SELECT sum(valor) INTO resultado FROM valores;
+IF resultado < 10 THEN
+  SELECT "Total < 10";
+ELSE
+  SELECT "Total >= 10";
+END IF;
+END//
+DELIMITER ;
+UPDATE valores SET valor=6 WHERE id=2;
+CALL suma();
+\end{verbatim}
+\subsection{Otras técnicas}
+\begin{itemize}
+	\item \textbf{Ataques de denegación de servicio:} Limitar los recursos que usa cada cuenta de usuario. 
+	\item \textbf{Ataques SQL injection: }Usar parametrización en las consultas de código.
+\end{itemize}
+\section{Auditoría}
+\begin{theorem}
+Proceso que consiste en recoger, agrupar y evaluar evidencias para determinar si un sistema de información salvaguarda el activo empresarial, mantiene la integridad de los datos, cumple con las leyes y regulaciones establecidas y utiliza eficientemente los recursos. 
+\end{theorem}
+\begin{theorem}
+Proceso que permite medir, monitorizar y registrar los accesos a la información de una BD: quién y cuándo accede, desde donde, qué comando o sentencias SQL se ejecutaron y cuál fue el efecto. 
+\end{theorem}
+\subsection{Tipos}
+\begin{itemize}
+	\item \textbf{Rutinaria: }Garantiza la integridad de la información en la BD y verifica que hay controles para prevenir riesgos. Revisa los usuarios y los permisos y la configuración del SGBD.
+	\item \textbf{Forense: }Trata de encontrar el motivo de un problema o fallo. Revisa los logs o registros.
+\end{itemize}
+\subsection{Requisitos}
+\begin{itemize}
+	\item No puede comprometer el funcionamiento rutinario.
+	\item Debe proveer información relevante relativa a \textit{seguridad}, \textit{apoyo en toma de decisiones}, \textit{mejora en el funcionamiento} de la organización.
+	\item En lo posible no debe ser \textit{auto-aplicada} (debe hacerla una persona externa).
+\end{itemize}
+
+\subsection{Acciones a auditar}
+\begin{itemize}
+	\item Usuarios: inicios/cierres de sesión (incluyendo fallidos) y propagación de permisos (incluyendo fallidos). 
+	\item Procesos: cambios en la configuración/tablas del SGBD y reinicio del servidor/proceso.
+	\item Comandos: acciones con permisos de administrador, intentos fallidos de acceso por falta de autorización, ejecución de procedimientos almacenados. 
+\end{itemize}
+\subsection{Herramientas}
+\begin{itemize}
+	\item \textbf{Logs:} son los ficheros que contienen el registro de actividad del SGBD. Son flexibles, pero requieren vigilancia para evitar problemas de almacenamiento y su análisis puede ser una tarea compleja. 
+	\item \textbf{Aplicaciones de 3ºs:} Software específico que se conecta al SGBD y permite monitorizar características. Facilita la extracción de información y combinan información de diferentes sistemas, pero resulta en gasto económico y posible impacto en rendimiento. 
+	\item \textbf{Triggers:} son programas almacenados que se llaman automáticamente tras un evento concreto (tras insert/delete/update...). SQL soporta 2 tipos: a nivel de \textbf{fila} y a nivel de \textbf{sentencia}. MySQL solo soporta a nivel de fila. Es una forma de vigilar la integridad de los datos, pero no permiten hacer todo tipo de validaciones, pueden ser difíciles de depurar e implican mayor sobrecarga. 
+\end{itemize}
+\subsubsection{Cómo crear Triggers en MySQL}
+Cada trigger se asocia a una tabla concreta:
+\begin{verbatim}
+CREATE TRIGGER <nombre><cuándo><acción> on <tabla> FOR EACH ROW <acciones>
+
+<cuándo>: Before/After
+<acción>: INSERT, DELETE, UPDATE
+\end{verbatim}
+El cuerpo del Trigger puede contener varias sentencias entre BEGIN y END.
+Mostrar triggers:
+\begin{verbatim}
+SHOW TRIGGERS;
+\end{verbatim}
+Borrar triggers:
+\begin{verbatim}
+DROP TRIGGER <nombre>;
+\end{verbatim}
+\subsection{Ejercicio 1:}
+\begin{verbatim}
+CREATE DATABASE AUDITADA;
+
+CREATE TABLE Datos( id int NOT NULL PRIMARY KEY,
+producto VARCHAR(50), 
+precio int);
+CREATE TABLE Audit(gasto int,
+fecha Date);
+
+CREATE TRIGGER trig AFTER INSERT ON Datos FOR EACH ROW INSERT INTO 
+Audit VALUES (NEW precio, Now());
+\end{verbatim}
 \section{Recuperación (06-02-2024)}
 
 La SGBD debe asegurar la integridad y la seguridad de los datos (LOPD) ante los riesgos de que estos datos se pierdan. 
@@ -303,7 +446,7 @@ ALGORITMO:
            activas.
 \end{verbatim}
 
-\subsubsection{Ejercicio 3: (08/02/2024)}
+\subsubsection{Ejercicio 3: (08-02-2024)}
 \begin{verbatim}
 ***** DATOS *****
 DIARIO Nº 2
@@ -471,9 +614,200 @@ Rehacer CONF :
 Reiniciar: T6, T4, T2, T7, T8
 \end{verbatim}
 
+\section{Control de concurrencia (21-02-2024)}
+\subsection{2PL}
+\begin{theorem}
+Conservador/Estático: Cada transacción debe reservar todos los elementos a los que quiere acceder antes de comenzar a ejecutarse.
+\end{theorem}
+\begin{theorem}
+Estricto: la transacción no libera ninguna reserva de escritura hasta finalizar.
+\end{theorem}
+\begin{theorem}
+Riguroso: una transacción no libera ninguna reserva hasta que finaliza.
+\end{theorem}
+\subsection{Marcas de tiempo de transacción}
+\textbf{Esperar-Morir:} Si t(Ti) $>$ t(Tj), Ti espera. Si no, Ti aborta y reinicia.\\
+\textbf{Herir-Esperar:} Si t(Ti) $<$ t(Tj), Tj es abortada y se reinicia. Si no, Ti espera. 
+\subsection{Ejercicios (04-03-2024)}
+\colorbox{SkyBlue}{Ejercicios corregidos en clase}\\
+\colorbox{Lavender}{Ejercicios conflictos}
+\begin{verbatim}
+[[1]]
 
-\newpage
+R1(X), R2(Z), R1(Z), R3(X), R3(Y), W1(X), W3(Y), R2(Y), R1(W),
+W2(Z), W1(W), R2(W), W2(Y)
 
+Confictos:
+1. <R1(Z), W2(Z)>
+2. <R3(x), W1(X)>
+3. <R3(Y), W2(Y)>
+4. <W3(Y), R2(Y)>
+5. <W3(Y), W2(Y)>
+6. <W1(W), R2(W)>
+
+Grafo:
+
+         - T1 <-
+  1,6   /        \
+       /          \ 2
+      v            \
+     T2<------------T3
+         3,4,5
+No es cíclico, sí es serializable: T3, T1, T2
+\end{verbatim}
+
+\begin{verbatim}
+[[2]]
+
+R1(X), R2(Z), R3(X), R1(Z), R2(Y), R3(Y), W1(X), R1(W),
+W1(W), W2(Z), W3(Y), R2(W), W2(Y).
+
+Conflictos:
+1. <R3(X), W1(X)>
+2. <R1(Z), W2(Z)>
+3. <R2(Y), W3(Y)>
+4. <R3(Y), W2(Y)>
+5. <W1(W), R2(W)>
+6. <W3(Y), W2(Y)>
+
+Grafo:
+
+        T1<- 
+ 2,5  /     \      
+     /       \ 1
+    v   3     \
+   T2<=======>T3    
+        4,6
+       
+Sí es cíclico, no serializable.        
+\end{verbatim}
+
+\colorbox{Lavender}{Ejercicios 2PL}
+\begin{verbatim}
+[[3]] EJERCICIO 2 EXAMEN
+
+TRANSACCIÓN A:  
+
+READ(A)
+READ(B)
+C = A + B
+WRITE(C)
+READ(E)
+D = 7 + E
+WRITE(D)
+READ(D)
+READ(A)
+F = D - A
+WRITE(F)
+
+a)) Que no cumpla el protocolo 2PL:
+RLOCK(A)
+READ(A)
+UNLOCK(A)
+RLOCK(B)
+READ(B)
+UNLOCK(B)
+C = A + B
+WLOCK(C)
+WRITE(C)
+UNLOCK(C)
+RLOCK(E)
+READ(E)
+UNLOCK(E)
+D = 7 + E
+WLOCK(D)
+WRITE(D)
+READ(D)
+UNLOCK(D)
+RLOCK(A)
+READ(A)
+UNLOCK(A)
+F = D - A
+WLOCK(F)
+WRITE(F)
+UNLOCK(F)
+
+b)) 2PL NORMAL:
+RLOCK(A)   -
+READ(A)     | 
+RLOCK(B)    |
+READ(B)     |
+C = A + B   |
+WLOCK(C)    |
+WRITE(C)    |  FASE DE EXPANSIÓN
+RLOCK(E)    |
+READ(E)     |
+D = 7 + E   |
+WLOCK(D)    |
+WRITE(D)    |
+READ(D)     |
+READ(A)     |
+F = D - A   -
+WLOCK(F)    -
+UNLOCK(A)   |
+UNLOCK(B)   |
+UNLOCK(C)   | FASE DE CONTRACCIÓN
+UNLOCK(E)   |
+UNLOCK(D)   |
+WRITE(F)    |
+UNLOCK(F)   -
+
+c)) 2PL RIGUROSO:
+Realizar todas las operaciones antes de los desbloqueos.
+
+d)) 2PL ESTÁTICO
+RLOCK(A)
+RLOCK(B)
+WLOCK(C)
+WLOCK(D)
+RLOCK(E)
+WLOCK(F)
+
+READ(A)
+READ(B)
+UNLOCK(B)
+C = A + B
+WRITE(C)
+UNLOCK(C)
+READ(E)
+UNLOCK(E)
+D = 7 + E
+WRITE(D)
+READ(D)
+UNLOCK(D)
+READ(A)
+UNLOCK(A)
+F = D - A
+WRITE(F)
+UNLOCK(F)
+
+Consejo: desbloquear siempre que podamos.
+\end{verbatim}
+\colorbox{Lavender}{Ejercicios Esperar-Morir, Herir-Esperar}
+\begin{verbatim}
+ESPERAR-MORIR:
+t(T3) = 1
+T3 -> WLOCK(Z)
+t(T1) = 3
+T1 -> wLOCK(X)
+t(T2) = 5
+T2 -> RLOCK(Y)
+t(T1) > t(T3), T1 ROLLBACK y libera WLOCK(X)
+T3 -> RLOCK(Y)
+UNLOCK(Z), continuar
+T2 -> WLOCK(X)
+UNLOCK(Y), continuar
+--
+--
+t(T3) < t(T2), T3 espera
+--
+--
+UNLOCK(X), T3 -> WLOCK(X)
+UNLOCK(Y), continuar
+UNLOCK(X), continuar
+
+HERIR-ESPERAR:
+\end{verbatim}
 % ------------------------------------------------------------------------------
 % Reference and Cited Works
 % ------------------------------------------------------------------------------
