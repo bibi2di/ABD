@@ -615,6 +615,25 @@ Reiniciar: T6, T4, T2, T7, T8
 \end{verbatim}
 
 \section{Control de concurrencia (21-02-2024)}
+\subsection{Introducción}
+\begin{theorem}
+Concurrencia: un mismo procesador ejecuta varios procesos de forma simultánea.
+\end{theorem}
+\begin{theorem}
+Paralelismo: varios procesadores ejecutan varios procesos de forma simultánea. 
+\end{theorem}
+\subsection{Plan de transacciones}
+\begin{theorem}
+Serie intercalada de operaciones de distintas transacciones que se ejecutan de forma concurrente. 
+\end{theorem}
+En un plan puede haber \textbf{conflictos}: situaciones que pueden derivar en problemas de concurrencia. 
+Dos operaciones están en conflicto si:
+\begin{itemize}
+	\item Las operaciones pertenecen a transacciones diferentes.
+	\item Acceden a la misma variable/elemento X.
+	\item Al menos una de las operaciones es write(X)
+\end{itemize}
+Una opción es utilizar planificaciones en serie: un plan donde las operaciones de cada transacción se ejecutan consecutivamente. Las operaciones de las transacciones no se intercalan y están libres de conflictos. 
 \subsection{2PL}
 \begin{theorem}
 Conservador/Estático: Cada transacción debe reservar todos los elementos a los que quiere acceder antes de comenzar a ejecutarse.
