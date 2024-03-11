@@ -804,7 +804,7 @@ Consejo: desbloquear siempre que podamos.
 \end{verbatim}
 \colorbox{Lavender}{Ejercicios Esperar-Morir, Herir-Esperar}
 \begin{verbatim}
-ESPERAR-MORIR:
++++ ESPERAR-MORIR: +++
 t(T3) = 1
 T3 -> WLOCK(Z)
 t(T1) = 3
@@ -825,7 +825,247 @@ UNLOCK(X), T3 -> WLOCK(X)
 UNLOCK(Y), continuar
 UNLOCK(X), continuar
 
-HERIR-ESPERAR:
++++ HERIR-ESPERAR: +++
+t(T3) = 1
+T3 -> WLOCK(Z)
+t(T1) = 3
+T1 -> WLOCK(X)
+t(T2) = 5
+T2 -> RLOCK(Y)
+t(T1) > t(T3), T1 espera
+T3 -> RLOCK(Y)
+UNLOCK(Z), T1 -> WLOCK(Z)
+t(T2) > t(T1), T2 espera
+UNLOCK(Y), continuamos
+t(T1) < t(T2), T2 es abortado: ROLLBACK, UNLOCK(Y), T1 -> WLOCK(Y)
+UNLOCK(X), continua
+T3 -> WLOCK(X)
+UNLOCK(Y), continua
+UNLOCK(Z), continua
+--
+--
+UNLOCK(X), continua
+**** cuando se hace un unlock, si alguien espera, se le concede, si no, se continúa ****
+
++++ ESPERAR-MORIR: +++
+t(T1) = 1
+T1 -> WLOCK(X)
+t(T2) = 3
+T2 -> RLOCK(Y)
+t(T3) = 5
+T3 -> WLOCK(Z)
+t(T1) < t(T3), T1 espera
+T3 -> RLOCK(Y)
+UNLOCK(Z), T1 -> WLOCK(Z)
+t(T1) < t(T2, t3), T1 espera
+t(T2) > t(T1), T2 ROLLBACK, UNLOCK(Y), continua	
+UNLOCK(Y), T1 -> WLOCK(Y)
+UNLOCK(X), continua
+T3 -> WLOCK(X)
+UNLOCK(Y), continua
+UNLOCK(Z), continua
+--
+--
+UNLOCK(X), continua
+\end{verbatim}
+
+\subsection{Protocolos de marcas de tiempo (05-03-2024)}
+\begin{theorem}
+Protocolos que permiten cumplir la propiedad Isolation de ACID sin usar reservas o locks.
+\end{theorem} Cada transacción tiene asociada una marca de tiempo, asignada al comienzo de su ejecución. Cada elemento X tendrá 2 marcas de tiempo: TSREAD(X) y TSWRITE(X) (última lectura y última escritura).\\
+Nos permite hacer una planificación de serie equivalente según las marcas de tiempo. \\
+\textbf{Situación:} T realiza WRITE(X). Si una transacción más joven ha leído o escrito X antes que T, se aborta. 
+\begin{verbatim}
+IF (TSREAD(X) > t(T)) OR (TSWRITE(X) > t(T))
+   T se aborta
+ELSE
+   WRITE(X)
+   TSWRITE(X) = t(T)
+\end{verbatim}
+\textbf{Situación:} T realiza READ(X). Si una transacción más joven ha escrito X antes de que T pueda leerlo, se aborta.
+\begin{verbatim}
+IF (TSWRITE(X) > t(T))
+   T se aborta
+ELSE
+   READ(X) 
+   TSREAD(X) = max(TSREAD(X), t(T))
+\end{verbatim}
+Estos son \textbf{Protocolos optimistas}. Asumen que va a haber pocos problemas de concurrencia, tienen mejor rendimiento, durante la ejecución de la transacción no realizan comprobaciones ni modificaciones. Al finalizar comprueban y abortan o commitean según su éxito.
+
+\subsection{Ejercicios (11-03-2024)}
+\colorbox{SkyBlue}{Ejercicios corregidos en clase}\\
+\colorbox{Lavender}{Ejercicios protocolos optimistas}
+\begin{verbatim}
+[[1]]
+t(T1) = 1
+TSWRITE(X) < t(T1): READ(X) & TSREAD(X) = 1
+t(T2) = 3
+TSWRITE(Y) < t(T1): READ(Y) & TSREAD(Y) = 1
+TSWRITE(Z) < t(T2): READ(Z) & TSREAD(Z) = 3
+TSWRITE(Y) < t(T2): READ(Y) & TSREAD(Y) = 3
+--
+--
+TSREAD(Z) = t(T2), TSWRITE(Z) < t(T2): WRITE(Z) & TSWRITE(Z) = 3
+TSWRITE(X) < t(T2): READ(X) & TSREAD(X) = 3
+TSWRITE(X) < t(T1), TSREAD(X) > t(T1): T1 ROLLBACK
+--
+--
+--
+TSWRITE(X) < t(T2), TSREAD(X) = t(T2): WRITE(X) & TSWRITE(X) = 3
+--
+\end{verbatim}
+\begin{verbatim}
+[[2]]
+t(T1) = 1
+TSWRITE(Z) < t(T1): READ(Z) & TSREAD(Z) = 1
+--
+t(T2) = 4
+TSWRITE(X) < t(T2): READ(X) & TSREAD(X) = 4
+--
+TSWRITE(Z) < t(T1), TSREAD(Z) = t(T1): WRITE(Z) & TSWRITE(Z) = 1
+TSWRITE(W) < t(T2), TSREAD(W) < t(T2): WRITE(W) & TSWRITE(W) = 4
+TSWRITE(Y) < t(T2): READ(Y) & TSREAD(Y) = 4
+TSWRITE(X) < t(T1): READ(X) & TSREAD(X) = 4
+TSWRITE(Z) < t(T2): READ(Z) & TSREAD(Z) = 4
+TSWRITE(Y) < t(T1): READ(Y) & TSREAD(Y) = 4
+--
+--
+TSWRITE(X) < t(T2), TSREAD(X) = t(T2): WRITE(X) & TSWRITE(X) = 4
+TSWRITE(Y) < t(T1), TSREAD(Y) > t(T1): T1 ROLLBACK
+\end{verbatim}
+\begin{verbatim}
+[[3]]
+t(T2) = 1
+TSWRITE(X) < t(T2): READ(X) & TSREAD(X) = 1
+t(T1) = 3
+TSWRITE(Z) < t(T1): READ(Z) & TSREAD(Z) = 3
+TSWRITE(Z) < t(T2): READ(Z) & TSREAD(Z) = 3
+--
+t(T3) = 7
+TSWRITE(Y) < t(T3): READ(Y) & TSREAD(Y) = 7
+TSWRITE(X) < t(T2), TSREAD(X) = t(T2): WRITE(X) & TSWRITE(X) = 1
+TSWRITE(X) < t(T3): READ(X) & TSREAD(X) = 7
+TSWRITE(Y) < t(T1): READ(Y) & TSREAD(Y) = 7
+--
+TSWRITE(Y) < t(T3), TSREAD(Y) = t(T3): WRITE(Y) & TSWRITE(Y) = 7
+TSWRITE(W) < t(T2): READ(W) & TSREAD(W) = 1
+--
+TSWRITE(Z) < t(T1), TSREAD(Z) = t(T1): WRITE(Z) & TSWRITE(Z) = 3
+--
+TSWRITE(W) < t(T1): READ(W) & TSREAD(W) = 3
+--
+TSWRITE(Y) > t(T1), TSREAD(Y) > t(T1): T1 ROLLBACK
+TSWRITE(W) < t(T2), TSREAD(W) > t(T2): T2 ROLLBACK
+\end{verbatim}
+
+\subsection{Repaso segundo parcial (ejercicios)}
+\begin{verbatim}
+[[1]] Conflictos
+R2(Y); R3(Y); R1(X); R2(W); W1(X); W3(X); W2(Y); R1(W); R3(Z);
+W1(W); W3(W); W2(Z);
+Lista de conflictos:
+1. <R3(Y), W2(Y)>
+2. <R1(X), W3(X)>
+3. <R2(W), W1(W)>
+4. <R2(W), W3(W)>
+5. <W1(X), W3(X)>
+6. <R1(W), W3(W)>
+7. <R3(Z), W2(Z)>
+8. <W1(W), W3(W)>
+
+Grafo:
+     ---->T1----
+     |         | 2,5,6,8 
+     |    4    v
+    T2<=======>T3
+          1,7
+No es serializable.
+\end{verbatim}
+\begin{verbatim}
+[[2]] 2PL
+READ(A)
+READ(B)
+X = A + B
+WRITE(X)
+READ(A)
+W = A - 5
+WRITE(W)
+READ(Y)
+Y = Y * 7
+WRITE(Y)
+
+A) 2PL NORMAL: bloquear cuando necesitemos, desbloquear cuando podamos.
+RLOCK(A)    _
+READ(A)      |
+RLOCK(B)     |
+READ(B)      |
+X = A + B    |
+WLOCK(X)     | FASE DE EXPANSIÓN
+WRITE(X)     |
+READ(A)      |
+W = A - 5    |
+WLOCK(W)     |
+WRITE(W)     |
+WLOCK(Y)    _|
+UNLOCK(A)   _ 
+UNLOCK(B)    |
+UNLOCK(X)    |
+UNLOCK(W)    |
+READ(Y)      | FASE DE CONTRACCIÓN
+Y = Y * 7    |
+WRITE(Y)     |
+UNLOCK(Y)   _|
+
+B) 2PL ESTRICTO: como un 2PL normal y 1.desbloqueo R 2.desbloqueo W
+RLOCK(A)
+READ(A)
+RLOCK(B)
+READ(B)
+X = A + B
+WLOCK(X)
+WRITE(X)
+READ(A)
+W = W - 5
+WLOCK(W)
+WRITE(W)
+WLOCK(Y)
+UNLOCK(A)
+UNLOCK(B)
+READ(Y)
+Y = Y * 7
+WRITE(Y)
+UNLOCK(X)
+UNLOCK(W)
+UNLOCK(Y)
+\end{verbatim}
+\begin{verbatim}
+[[3]] Herir-Esperar
+*****************************************************
+IF (t(Ti) < t(Tj)): herir (Tj ROLLBACK) ELSE: esperar
+*****************************************************
+1. t(T3) = 1
+2. T3 -> RLOCK(W)
+3. t(T1) = 3
+4. t(T2) = 4
+5. T3 -> WLOCK(Z)
+6. T1 -> WLOCK(X)
+7. T2 -> RLOCK(Y)
+8. t(T2) > t(T1): T2 ESPERA
+9. UNLOCK(X): T2 -> WLOCK(X)
+10. T2 -> WLOCK(Y)
+11. UNLOCK(W): CONTINUA
+12. t(T1) < t(T2): T2 ROLLBACK; UNLOCK(X, Y); T1-> RLOCK(Y)
+13. T3 -> WLOCK(X)
+14. --
+15. UNLOCK(Z): CONTINUA
+16. T1 -> WLOCK(W)
+17. --
+18. UNLOCK(X): CONTINUA
+19. UNLOCK(W): CONTINUA
+20. --
+21. UNLOCK(Y): CONTINUA
+22. --
+
 \end{verbatim}
 % ------------------------------------------------------------------------------
 % Reference and Cited Works
